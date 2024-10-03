@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Experience and Range Penetration Calculator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            padding: 0;
+        }
+
+        .input-row, .form-section, .fte-section {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"], button, select {
+            margin-top: 5px;
+            width: 100%; /* Ensures inputs expand to container width */
+        }
+
+        label {
+            margin-top: 10px;
+            width: 100%; /* Full width for labels for clear association */
+        }
+
+        .bar-container {
+            position: relative;
+            height: 20px;
+            width: 100%;
+            max-width: 300px;
+            background-color: #ddd;
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+
+        .salary-point {
+            position: absolute;
+            height: 20px;
+            width: 10px;
+            background-color: red;
+            top: 0;
+        }
+
+        .chart-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 300px;
+            margin-top: 5px;
+        }
+
+        @media (min-width: 600px) {
+            .input-row, .form-section, .fte-section {
+                flex-direction: row;
+                align-items: center;
+            }
+
+            input, button, select {
+                margin: 5px;
+                width: auto; /* Allows natural width on larger screens */
+            }
+
+            label {
+                margin-right: 10px;
+                width: auto; /* Natural width for labels on larger screens */
+            }
+            h2 {
+                text-align: left; /* Aligns text to the left */
+                width: 100%; /* Ensures the header spans the full width of its container */
+                padding-left: 0; /* Removes padding on the left for left alignment */
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+       
+    </header>
+    <h1>Salary Calculator</h1>
+
+    <h3>#1: Insert Work Experience</h2>
+    <div id="experienceContainer"></div>
+    <button onclick="addRow()">+ Add Another Job</button><br><br>
+
+    <h3>#2: Insert Current Salary Range for Your Job</h2>
+    <div class="form-section">
+        <label for="minSalary">Salary Minimum:</label>
+        <input type="text" id="minSalary" placeholder="$0.00" onblur="formatCurrencyOnBlur(this)" />
+        <label for="maxSalary">Salary Maximum:</label>
+        <input type="text" id="maxSalary" placeholder="$0.00" onblur="formatCurrencyOnBlur(this)" />
+    </div>
+
+<h3>#3: Insert Work Hours Per Week</h2>
+<div class="fte-section">
+    <label for="weeklyHours">Weekly Work Hours:</label>
+    <input type="number" id="weeklyHours" placeholder="Hours per week" max="40" min="1" onchange="calculateFTE()" style="width: 200px;" />
+    <span id="fte">FTE: 0</span>
+</div>
+
+
+<h3>#4: Calculate!</h2>
+<button onclick="calculateTotalExperience()" style="width: 200px; height: 50px; background-color: #217346; color: white; font-size: 16px;">Calculate!</button>
+<p id="totalYears">Total Experience: 0 Years</p>
+<p id="totalPoints">Total Points Granted: 0</p>
+<p id="rangePenetration">Range Penetration: 0</p>
+<p id="recommendedSalary">Recommended Salary/Hourly Pay: </p>
+
+
+    <!-- Salary Bar and Labels -->
+    <div id="salaryBar" class="bar-container"></div>
+    <div class="chart-labels">
+        <span>MIN</span>
+        <span>Salary</span>
+        <span>MAX</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            addRow(); // Add first row automatically on load
+        });
+
+        function addRow() {
+            var container = document.getElementById('experienceContainer');
+            var newRow = document.createElement('div');
+            newRow.className = 'input-row';
+            newRow.innerHTML = `<input type="text" placeholder="Job Title" />
+                                <input type="text" placeholder="Start MM-YYYY" />
+                                <input type="text" placeholder="End MM-YYYY" />
+                                <span class="time-span">0 Years</span>
+                                <input type="number" value="1.00" min="0" max="1" step="0.01" onchange="calculateTotalExperience()" />
+                                <span class="points-granted">0 Points</span>
+                                <button onclick="deleteRow(this)">Delete</button>`;
+            container.appendChild(newRow);
+        }
+
+        function formatCurrencyOnBlur(input) {
+            let value = parseFloat(input.value.replace(/[^0-9.-]+/g, ""));
+            input.value = value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        }
+
+        function parseCurrency(value) {
+            return parseFloat(value.replace(/[^0-9.-]+/g, ""));
+        }
+
+        function deleteRow(button) {
+            button.parentNode.remove();
+            calculateTotalExperience(); // Recalculate after row is deleted
+        }
+
+        function calculateTotalExperience() {
+            var rows = document.querySelectorAll('.input-row');
+            var totalYears = 0;
+            var totalPoints = 0;
+            rows.forEach(row => {
+                var start = row.children[1].value.split('-');
+                var end = row.children[2].value.split('-');
+                if (start.length === 2 && end.length === 2) {
+                    var startYear = parseInt(start[1]), startMonth = parseInt(start[0]);
+                    var endYear = parseInt(end[1]), endMonth = parseInt(end[0]);
+                    var months = (endYear - startYear) * 12 + (endMonth - startMonth);
+                    var yearFrac = months / 12;
+                    yearFrac = Math.max(yearFrac, 0);
+                    var inputVariable = parseFloat(row.children[4].value);
+                    var pointsGranted = yearFrac * inputVariable;
+                    totalYears += yearFrac;
+                    totalPoints += pointsGranted;
+                    row.children[3].innerText = yearFrac.toFixed(1) + ' Years';
+                    row.children[5].innerText = pointsGranted.toFixed(1) + ' Points';
+                }
+            });
+            document.getElementById('totalYears').innerText = 'Total Experience: ' + totalYears.toFixed(1) + ' Years';
+            document.getElementById('totalPoints').innerText = 'Total Points Granted: ' + totalPoints.toFixed(1);
+
+            var fte = Math.min(parseFloat(document.getElementById('weeklyHours').value) / 40, 1);
+            var minSalary = parseCurrency(document.getElementById('minSalary').value);
+            var maxSalary = parseCurrency(document.getElementById('maxSalary').value);
+            var recommendedSalary = percentileInc(minSalary, maxSalary, totalPoints / 25) * fte;
+            document.getElementById('recommendedSalary').innerText = 'Recommended Salary/Hourly Pay: ' + recommendedSalary.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+            var rangePenetration = totalPoints / 25; // Ensure this is the correct formula for calculating range penetration.
+            rangePenetration = Math.min(rangePenetration, 1); // Cap it at 1 (or 100%)
+            document.getElementById('rangePenetration').innerText = 'Range Penetration: ' + rangePenetration.toFixed(2);
+
+            updateChart(minSalary, maxSalary, recommendedSalary); // Update the salary bar chart
+        }
+
+        function updateChart(min, max, recommended) {
+            var range = max - min;
+            var positionInBar = ((recommended - min) / range) * 100;
+            var bar = document.getElementById('salaryBar');
+
+            // Clear existing point
+            if (bar.children.length > 0) {
+                bar.removeChild(bar.firstChild);
+            }
+
+            // Create and position the new point
+            var point = document.createElement('div');
+            point.className = 'salary-point';
+            point.style.left = positionInBar + '%';
+            bar.appendChild(point);
+        }
+
+        function percentileInc(minValue, maxValue, penetration) {
+            return minValue + (maxValue - minValue) * penetration;
+        }
+
+        function calculateFTE() {
+            var hours = Math.min(parseFloat(document.getElementById('weeklyHours').value), 40);
+            var fte = hours / 40;
+            document.getElementById('fte').innerText = 'FTE: ' + fte.toFixed(2);
+            calculateTotalExperience(); // Recalculate recommended salary based on new FTE
+        }
+
+        function openHelpWindow() {
+            window.open('mailto:david@davidgaus.com', '_blank');
+        }
+
+        function printDocument() {
+            window.print(); // Triggers the native print functionality
+        }
+    </script>
+
+    <button onclick="printDocument()">Print to PDF</button>
+    <button onclick="openHelpWindow()" style="margin-top: 20px;">Need Help?</button>
+
+    <footer style="margin-top: 20px; text-align: left; width: 100%;">
+        <p>Copyright © 2024 Gaus LLC. All rights reserved.</p>
+    </footer>
+</body>
+</html>
